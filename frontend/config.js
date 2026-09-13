@@ -9,7 +9,7 @@
  */
 window.RAILSYNCHRO_CONFIG = {
   // Cloud Production Backend (e.g. Render / Railway / Cloud Run)
-  PROD_API_URL: "https://railsynchro-backend.onrender.com",
+  PROD_API_URL: "https://railsynchro.onrender.com",
 
   // Local Development Backend
   LOCAL_API_URL: "http://localhost:8000",
