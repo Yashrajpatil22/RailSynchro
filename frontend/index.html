@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RailSynchro — AI-Powered Automatic Block Planning MVP (SIH26027)</title>
+  <!-- Optional modern fonts with robust system fallbacks -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Frontend Environment Configuration -->
+  <script src="config.js"></script>
+  <style>
+    :root {
+      --bg-canvas: #070a13;
+      --bg-panel: #0d1322;
+      --bg-panel-header: #131b2e;
+      --bg-card: #111a2e;
+      --bg-card-hover: #17233d;
+      --border-color: #1e2c4a;
+      --border-accent: #2e4372;
+      
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --color-green: #10b981;
+      --color-green-glow: rgba(16, 185, 129, 0.25);
+      --color-red: #ef4444;
+      --color-red-glow: rgba(239, 68, 68, 0.25);
+      --color-amber: #f59e0b;
+      --color-amber-glow: rgba(245, 158, 11, 0.25);
+      
+      /* Department Colors */
+      --dept-tms: #3b82f6;      /* Track - Railway Blue */
+      --dept-tdms: #a855f7;     /* Traction/OHE - Electric Violet */
+      --dept-smms: #06b6d4;     /* Signalling - Cyan */
+      
+      --font-mono: 'JetBrains Mono', 'Consolas', 'Fira Code', monospace;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Industrial Control Header */
+    header.control-header {
+      background: linear-gradient(180deg, #111a2f 0%, #0c1324 100%);
+      border-bottom: 2px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-badge {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-title span.ir {
+      color: #94a3b8;
+      font-weight: 400;
+      font-size: 14px;
+      border-left: 1px solid #334155;
+      padding-left: 8px;
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--color-green);
+      box-shadow: 0 0 8px var(--color-green);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.offline {
+      background-color: var(--color-red);
+      box-shadow: 0 0 8px var(--color-red);
+    }
+
+    .status-dot.solving {
+      background-color: var(--color-amber);
+      box-shadow: 0 0 8px var(--color-amber);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.9); }
+    }
+
+    /* API Controls */
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .api-endpoint-badge {
+      display: flex;
+      align-items: center;
+      background: #090e1a;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 6px 12px;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .api-endpoint-badge:hover {
+      border-color: #38bdf8;
+      background: #0e172a;
+    }
+
+    .api-badge-icon {
+      font-size: 12px;
+    }
+
+    .api-badge-label {
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .api-badge-url {
+      color: #38bdf8;
+      font-weight: 600;
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .api-badge-edit {
+      color: var(--text-dim);
+      font-size: 11px;
+      margin-left: 2px;
+    }
+
+    .api-endpoint-badge:hover .api-badge-edit {
+      color: #38bdf8;
+    }
+
+
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      border-color: #334155;
+      color: #cbd5e1;
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+      color: #fff;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      border-color: #34d399;
+      color: #fff;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #047857 0%, #059669 100%);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Main Container */
+    main.dashboard-container {
+      flex: 1;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 1700px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Connection Banner */
+    .connection-banner {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .connection-banner.active {
+      display: flex;
+    }
+
+    /* Summary Metric Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .summary-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .summary-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #334155;
+    }
+
+    .summary-card.highlight-green::before {
+      background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .summary-card.highlight-blue::before {
+      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    }
+
+    .summary-card.highlight-purple::before {
+      background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+    }
+
+    .summary-card.highlight-amber::before {
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    }
+
+    .summary-label {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .summary-value {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin: 8px 0 4px;
+    }
+
+    .summary-value span.unit {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+
+    .summary-subtext {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-reduction {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Panel Generic Styles */
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    .panel-header {
+      background: var(--bg-panel-header);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+    }
+
+    .panel-title .indicator {
+      width: 4px;
+      height: 14px;
+      background: #38bdf8;
+      border-radius: 2px;
+    }
+
+    /* Timeline Section Controls */
+    .timeline-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .toggle-group {
+      display: inline-flex;
+      background: #090e1a;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 3px;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .toggle-btn.active {
+      background: #1e293b;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    .toggle-btn.active.mode-after {
+      background: #065f46;
+      color: #a7f3d0;
+      border: 1px solid #059669;
+    }
+
+    .toggle-btn.active.mode-before {
+      background: #1e3a8a;
+      color: #bfdbfe;
+      border: 1px solid #2563eb;
+    }
+
+    /* Legend */
+    .timeline-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 8px 20px;
+      background: rgba(0, 0, 0, 0.25);
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-color {
+      width: 14px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    .legend-color.occupied {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(239, 68, 68, 0.3),
+        rgba(239, 68, 68, 0.3) 3px,
+        rgba(239, 68, 68, 0.7) 3px,
+        rgba(239, 68, 68, 0.7) 6px
+      );
+      border: 1px solid rgba(239, 68, 68, 0.8);
+    }
+
+    .legend-color.tms { background: var(--dept-tms); }
+    .legend-color.tdms { background: var(--dept-tdms); }
+    .legend-color.smms { background: var(--dept-smms); }
+    .legend-color.joint {
+      background: var(--color-green);
+      box-shadow: 0 0 6px var(--color-green);
+    }
+
+    /* Timeline Main Grid */
+    .timeline-wrapper {
+      padding: 16px 20px;
+      overflow-x: auto;
+      background: #090e1a;
+    }
+
+    .timeline-inner {
+      min-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Days Header */
+    .timeline-header-row {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      align-items: center;
+    }
+
+    .timeline-days-bar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      border-bottom: 1px solid var(--border-accent);
+      padding-bottom: 4px;
+    }
+
+    .day-marker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: left;
+      border-left: 1px solid var(--border-color);
+      padding-left: 6px;
+    }
+
+    .day-marker strong {
+      color: var(--text-muted);
+    }
+
+    /* Corridor Rows */
+    .corridor-row {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      align-items: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+      transition: border-color 0.15s ease;
+    }
+
+    .corridor-row:hover {
+      border-color: var(--border-accent);
+    }
+
+    .corridor-meta {
+      padding: 10px 14px;
+      border-right: 1px solid var(--border-color);
+      background: #0f182c;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .corridor-id {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 13px;
+      color: #38bdf8;
+    }
+
+    .corridor-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .corridor-zone {
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    /* 168h Track Canvas */
+    .corridor-track-container {
+      position: relative;
+      height: 48px;
+      background: #070c17;
+      overflow: hidden;
+    }
+
+    /* Day guide lines */
+    .day-guide-lines {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      pointer-events: none;
+    }
+
+    .day-guide-line {
+      border-left: 1px dashed rgba(255, 255, 255, 0.07);
+      height: 100%;
+    }
+
+    /* Occupied Hour Pattern Elements */
+    .occupied-band {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(239, 68, 68, 0.18),
+        rgba(239, 68, 68, 0.18) 3px,
+        rgba(239, 68, 68, 0.45) 3px,
+        rgba(239, 68, 68, 0.45) 6px
+      );
+      border-left: 1px solid rgba(239, 68, 68, 0.7);
+      border-right: 1px solid rgba(239, 68, 68, 0.7);
+      z-index: 1;
+      cursor: help;
+    }
+
+    /* Scheduled Block Bars */
+    .schedule-bar {
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      border-radius: 4px;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      padding: 0 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .schedule-bar:hover {
+      transform: scaleY(1.1);
+      filter: brightness(1.2);
+      z-index: 20;
+    }
+
+    .schedule-bar.joint {
+      background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+      border: 1px solid #34d399;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+    }
+
+    .schedule-bar.tms {
+      background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+      border: 1px solid #60a5fa;
+    }
+
+    .schedule-bar.tdms {
+      background: linear-gradient(90deg, #6d28d9, #8b5cf6);
+      border: 1px solid #c084fc;
+    }
+
+    .schedule-bar.smms {
+      background: linear-gradient(90deg, #0e7490, #06b6d4);
+      border: 1px solid #67e8f9;
+    }
+
+    /* Defect Queue Panel */
+    .defect-table-wrapper {
+      overflow-x: auto;
+    }
+
+    table.defect-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    table.defect-table th {
+      background: #0f172a;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+      letter-spacing: 0.5px;
+    }
+
+    table.defect-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #131c31;
+      font-size: 13px;
+    }
+
+    table.defect-table tbody tr {
+      transition: background-color 0.15s ease;
+    }
+
+    table.defect-table tbody tr:hover {
+      background-color: var(--bg-card-hover);
+    }
+
+    /* Department Tag Badges */
+    .dept-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    .dept-badge.tms {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #60a5fa;
+    }
+
+    .dept-badge.tdms {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #c084fc;
+    }
+
+    .dept-badge.smms {
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      color: #67e8f9;
+    }
+
+    /* Risk Score Gauge */
+    .risk-gauge-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 140px;
+    }
+
+    .risk-score-num {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 12px;
+      width: 38px;
+    }
+
+    .risk-bar-track {
+      flex: 1;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .risk-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .priority-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    /* Severity Dots */
+    .severity-dots {
+      display: inline-flex;
+      gap: 3px;
+    }
+
+    .severity-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #334155;
+    }
+
+    .severity-dot.active {
+      background: #f59e0b;
+    }
+
+    .severity-dot.active.critical {
+      background: #ef4444;
+    }
+
+    /* Telemetry Console Panel */
+    .console-box {
+      background: #050811;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px 18px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #94a3b8;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    .console-box .green { color: #10b981; }
+    .console-box .cyan { color: #38bdf8; }
+    .console-box .amber { color: #f59e0b; }
+    .console-box .gray { color: #64748b; }
+
+    /* Custom Tooltip */
+    #tooltip {
+      position: absolute;
+      display: none;
+      background: #0f172a;
+      border: 1px solid #334155;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+      border-radius: 6px;
+      padding: 10px 14px;
+      z-index: 1000;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      pointer-events: none;
+      max-width: 320px;
+    }
+
+    #tooltip .tooltip-header {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 12px;
+      color: #38bdf8;
+      margin-bottom: 4px;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 4px;
+    }
+
+    #tooltip .tooltip-body {
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+
+    /* Footer */
+    footer.control-footer {
+      border-top: 1px solid var(--border-color);
+      padding: 12px 24px;
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      background: #070a13;
+    }
+
+    @media (max-width: 900px) {
+      header.control-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .header-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Industrial Railway Control Header -->
+  <header class="control-header">
+    <div class="brand-section">
+      <div class="brand-badge">SIH26027</div>
+      <div class="brand-title">
+        RAILSYNCHRO
+        <span class="ir">Indian Railways • Automated Block Planning MVP</span>
+      </div>
+      <div class="system-status">
+        <div class="status-dot" id="system-status-dot"></div>
+        <span id="system-status-text">INITIALIZING</span>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <div class="api-endpoint-badge" title="Active Backend Engine Endpoint (Click to customize if needed)" onclick="promptCustomApiUrl()">
+        <span class="api-badge-icon">🌐</span>
+        <span class="api-badge-label">API</span>
+        <span class="api-badge-url" id="active-api-url">http://localhost:8000</span>
+        <span class="api-badge-edit" title="Click to edit URL">⚙️</span>
+      </div>
+      <button class="btn btn-primary" id="run-opt-btn" onclick="runOptimization()">
+        ⚡ Run Optimization
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Console Body -->
+  <main class="dashboard-container">
+
+    <!-- Connection Alert Banner (Shown if API cannot be reached) -->
+    <div class="connection-banner" id="connection-banner">
+      <div id="banner-error-msg">⚠️ Connection Error: Could not reach backend at specified API URL.</div>
+      <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="fetchInitialData()">Retry</button>
+    </div>
+
+    <!-- Summary KPI Cards -->
+    <section class="summary-grid">
+      <div class="summary-card highlight-green">
+        <div class="summary-label">
+          <span>Track Downtime</span>
+          <span class="badge-reduction" id="kpi-reduction-badge">-- %</span>
+        </div>
+        <div class="summary-value" id="kpi-downtime-after">-- <span class="unit">hours</span></div>
+        <div class="summary-subtext">
+          <span>Baseline Siloed: <strong id="kpi-downtime-before" style="color:#ef4444;">-- hrs</strong></span>
+          <span style="color:#10b981; font-family:var(--font-mono);" id="kpi-downtime-saved">(-- hrs saved)</span>
+        </div>
+      </div>
+
+      <div class="summary-card highlight-blue">
+        <div class="summary-label">
+          <span>Block Closure Operations</span>
+          <span class="badge-reduction" id="kpi-blocks-reduction-badge">-- %</span>
+        </div>
+        <div class="summary-value" id="kpi-blocks-after">-- <span class="unit">windows</span></div>
+        <div class="summary-subtext">
+          <span>Baseline Requests: <strong id="kpi-blocks-before" style="color:#94a3b8;">-- blocks</strong></span>
+        </div>
+      </div>
+
+      <div class="summary-card highlight-amber">
+        <div class="summary-label">
+          <span>COA Timetable Clearance</span>
+          <span style="color:#10b981; font-family:var(--font-mono); font-size:10px;">100% CLEAR</span>
+        </div>
+        <div class="summary-value" style="color:#38bdf8;">0 <span class="unit">train conflicts</span></div>
+        <div class="summary-subtext">
+          <span>Hard constraints: Passenger & freight paths intact</span>
+        </div>
+      </div>
+
+      <div class="summary-card highlight-purple">
+        <div class="summary-label">
+          <span>Solver Telemetry</span>
+          <span style="color:#a855f7; font-family:var(--font-mono); font-size:10px;">CP-SAT</span>
+        </div>
+        <div class="summary-value" id="kpi-solver-status" style="font-size: 22px; color: #a855f7;">READY</div>
+        <div class="summary-subtext">
+          <span>Solve Time: <strong id="kpi-solve-time" style="color:#fff;">-- ms</strong></span>
+          <span>• Max Concurrency: <strong>2</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Corridor Schedule Panel (168-Hour Gantt Timeline) -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="indicator"></div>
+          7-Day Corridor Maintenance Timeline (168-Hour COA Horizon)
+        </div>
+
+        <div class="timeline-controls">
+          <div class="toggle-group">
+            <button class="toggle-btn" id="btn-mode-before" onclick="setTimelineMode('before')">
+              Before — Siloed Requests
+            </button>
+            <button class="toggle-btn active mode-after" id="btn-mode-after" onclick="setTimelineMode('after')">
+              After — Joint Optimization
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend bar -->
+      <div class="timeline-legend">
+        <div class="legend-item">
+          <div class="legend-color occupied"></div>
+          <span>COA Train-Occupied Path (Hard Block)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color joint"></div>
+          <span>Joint Merged Window (Optimized)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color tms"></div>
+          <span>TMS (Track)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color tdms"></div>
+          <span>TDMS (Traction OHE)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color smms"></div>
+          <span>SMMS (Signalling)</span>
+        </div>
+      </div>
+
+      <!-- Scrollable 168-hour Gantt area -->
+      <div class="timeline-wrapper">
+        <div class="timeline-inner">
+          
+          <!-- Days header row -->
+          <div class="timeline-header-row">
+            <div style="padding-left:14px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); text-transform:uppercase;">
+              Corridor & Division
+            </div>
+            <div class="timeline-days-bar">
+              <div class="day-marker"><strong>DAY 1</strong> (00:00 - 24:00)</div>
+              <div class="day-marker"><strong>DAY 2</strong> (24:00 - 48:00)</div>
+              <div class="day-marker"><strong>DAY 3</strong> (48:00 - 72:00)</div>
+              <div class="day-marker"><strong>DAY 4</strong> (72:00 - 96:00)</div>
+              <div class="day-marker"><strong>DAY 5</strong> (96:00 - 120:00)</div>
+              <div class="day-marker"><strong>DAY 6</strong> (120:00 - 144:00)</div>
+              <div class="day-marker"><strong>DAY 7</strong> (144:00 - 168:00)</div>
+            </div>
+          </div>
+
+          <!-- Corridor Gantt Canvas Container -->
+          <div id="corridor-rows-container" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Rendered dynamically by JS -->
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Defect Queue Panel -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="indicator" style="background: #a855f7;"></div>
+          Engineering Defect Queue & Explainable Priority Scoring
+        </div>
+        <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);" id="defect-count-badge">
+          12 Defects Detected across 3 Departments
+        </div>
+      </div>
+
+      <div class="defect-table-wrapper">
+        <table class="defect-table">
+          <thead>
+            <tr>
+              <th>Defect ID</th>
+              <th>Department</th>
+              <th>Corridor</th>
+              <th>Technical Description</th>
+              <th>Severity</th>
+              <th>Days Overdue</th>
+              <th>Job Duration</th>
+              <th>Explainable Risk Score</th>
+              <th>Priority Level</th>
+            </tr>
+          </thead>
+          <tbody id="defect-table-body">
+            <!-- Rendered dynamically by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Solver Console & Mathematical Formulation Panel -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="indicator" style="background: #10b981;"></div>
+          CP-SAT Optimization Telemetry & Problem Formulation
+        </div>
+        <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);">
+          ENGINE: ortools.sat.python.cp_model
+        </div>
+      </div>
+      <div style="padding: 16px 20px;">
+        <div class="console-box" id="solver-console">
+          <div><span class="gray">[SYSTEM]</span> Initializing RailSynchro CP-SAT Operational Console...</div>
+          <div><span class="cyan">[INFO]</span> Backend ready. Grouping TMS, TDMS, SMMS requests by corridor.</div>
+          <div><span class="cyan">[INFO]</span> Enforcing hard COA timetable clearance and division concurrency limit (C=2).</div>
+          <div><span class="green">[READY]</span> Click "Run Optimization" to execute mathematical constraint solver.</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Interactive Hover Tooltip -->
+  <div id="tooltip">
+    <div class="tooltip-header" id="tooltip-title">Title</div>
+    <div class="tooltip-body" id="tooltip-content">Content</div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="control-footer">
+    <div>Smart India Hackathon SIH26027 • AI-Powered Automatic Block Planning for Indian Railways</div>
+    <div>TMS (Track) • TDMS (Traction OHE) • SMMS (Signalling) • COA (Timetable)</div>
+  </footer>
+
+  <!-- Operational JavaScript Logic -->
+  <script>
+    // State management
+    let currentMode = 'after'; // 'before' | 'after'
+    let defectsData = [];
+    let corridorsData = [];
+    let trainOccupiedHours = {};
+    let scheduleResult = null;
+    let horizonHours = 168;
+
+    // Backend API Configuration:
+    // Uses window.RAILSYNCHRO_CONFIG from config.js if available, with intelligent defaults.
+    const CONFIG = window.RAILSYNCHRO_CONFIG || {
+      PROD_API_URL: "https://railsynchro-backend.onrender.com",
+      LOCAL_API_URL: "http://localhost:8000",
+      API_URL_OVERRIDE: ""
+    };
+
+    const STORAGE_KEY = 'railsynchro_api_url';
+
+    function getApiUrl() {
+      // 1. Manual override in config.js
+      if (CONFIG.API_URL_OVERRIDE && CONFIG.API_URL_OVERRIDE.trim()) {
+        return CONFIG.API_URL_OVERRIDE.trim().replace(/\/+$/, '');
+      }
+
+      // 2. Query param override (e.g. ?api=http://... or ?backend=...)
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryApi = urlParams.get('api') || urlParams.get('backend');
+      if (queryApi) {
+        return queryApi.trim().replace(/\/+$/, '');
+      }
+
+      // 3. User manual override stored in localStorage
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved && saved.trim()) {
+        return saved.trim().replace(/\/+$/, '');
+      }
+
+      // 4. Same-origin check: if frontend is served by FastAPI directly
+      if (window.location.port === '8000' && window.location.hostname !== '') {
+        return window.location.origin;
+      }
+
+      // 5. Environment Auto-detection:
+      // Local development (localhost, 127.0.0.1, or file://)
+      const isLocal = window.location.hostname === 'localhost' ||
+                      window.location.hostname === '127.0.0.1' ||
+                      window.location.hostname === '' ||
+                      window.location.protocol === 'file:';
+
+      return isLocal ? CONFIG.LOCAL_API_URL : CONFIG.PROD_API_URL;
+    }
+
+    function promptCustomApiUrl() {
+      const current = getApiUrl();
+      const custom = prompt(
+        "Configure Backend API URL:\n(Leave empty to reset to auto-detection)",
+        current
+      );
+      if (custom !== null) {
+        if (custom.trim()) {
+          localStorage.setItem(STORAGE_KEY, custom.trim().replace(/\/+$/, ''));
+          logConsole(`[CONFIG] Custom Backend URL set to: ${custom.trim()}`, 'cyan');
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+          logConsole(`[CONFIG] Reset Backend URL to default environment auto-detection.`, 'cyan');
+        }
+        fetchInitialData();
+      }
+    }
+
+    // Logger utility for telemetry console
+    function logConsole(msg, colorClass = '') {
+      const consoleEl = document.getElementById('solver-console');
+      const row = document.createElement('div');
+      const timeStr = new Date().toLocaleTimeString();
+      if (colorClass) {
+        row.className = colorClass;
+      }
+      row.innerHTML = `<span class="gray">[${timeStr}]</span> ${msg}`;
+      consoleEl.appendChild(row);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function setStatus(state, label) {
+      const dot = document.getElementById('system-status-dot');
+      const text = document.getElementById('system-status-text');
+      dot.className = 'status-dot ' + state;
+      text.innerText = label;
+    }
+
+    // Toggle between Siloed (Before) and Joint Optimization (After)
+    function setTimelineMode(mode) {
+      currentMode = mode;
+      const btnBefore = document.getElementById('btn-mode-before');
+      const btnAfter = document.getElementById('btn-mode-after');
+
+      if (mode === 'after') {
+        btnAfter.className = 'toggle-btn active mode-after';
+        btnBefore.className = 'toggle-btn';
+      } else {
+        btnBefore.className = 'toggle-btn active mode-before';
+        btnAfter.className = 'toggle-btn';
+      }
+
+      renderCorridorTimelines();
+    }
+
+    // Initial Data Fetch
+    async function fetchInitialData() {
+      const apiUrl = getApiUrl();
+      const activeBadgeUrl = document.getElementById('active-api-url');
+      if (activeBadgeUrl) activeBadgeUrl.innerText = apiUrl;
+
+      const banner = document.getElementById('connection-banner');
+      const errMsg = document.getElementById('banner-error-msg');
+
+      setStatus('solving', 'CONNECTING...');
+      logConsole(`Connecting to backend at ${apiUrl}/api/defects...`, 'cyan');
+
+      try {
+        const res = await fetch(`${apiUrl}/api/defects`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+
+        corridorsData = data.corridors || [];
+        defectsData = data.defects || [];
+        trainOccupiedHours = data.train_occupied_hours || {};
+        horizonHours = data.horizon_hours || 168;
+
+        banner.classList.remove('active');
+        setStatus('', 'ONLINE — SOLVER READY');
+        logConsole(`Successfully retrieved ${defectsData.length} defects across ${corridorsData.length} corridors.`, 'green');
+
+        renderDefectQueue(defectsData);
+        renderCorridorTimelines();
+
+        // Automatically run optimization on initial successful connection
+        runOptimization();
+
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setStatus('offline', 'DISCONNECTED');
+        banner.classList.add('active');
+        errMsg.innerHTML = `⚠️ Connection Error: Could not reach backend at <code>${apiUrl}</code>. Ensure backend is running (<code>uvicorn main:app --reload</code>).`;
+        logConsole(`Connection failed: ${err.message}. Check CORS or server status.`, 'amber');
+      }
+    }
+
+    // Run CP-SAT Optimization Solver via API
+    async function runOptimization() {
+      const apiUrl = getApiUrl();
+      const runBtn = document.getElementById('run-opt-btn');
+      runBtn.disabled = true;
+      runBtn.innerText = '⚡ Solving...';
+      setStatus('solving', 'SOLVING CP-SAT...');
+
+      logConsole(`Invoking Google OR-Tools CP-SAT solver (GET ${apiUrl}/api/schedule?max_concurrent_blocks=2)...`, 'cyan');
+
+      try {
+        const startTime = performance.now();
+        const res = await fetch(`${apiUrl}/api/schedule?max_concurrent_blocks=2`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        scheduleResult = await res.json();
+        const elapsed = (performance.now() - startTime).toFixed(1);
+
+        const sum = scheduleResult.summary;
+        const telemetry = scheduleResult.joint_schedule.solver_telemetry;
+
+        // Update KPIs
+        document.getElementById('kpi-downtime-after').innerHTML = `${sum.downtime_after_hours} <span class="unit">hours</span>`;
+        document.getElementById('kpi-downtime-before').innerText = `${sum.downtime_before_hours} hrs`;
+        document.getElementById('kpi-downtime-saved').innerText = `(-${sum.downtime_saved_hours} hrs saved)`;
+        document.getElementById('kpi-reduction-badge').innerText = `▼ ${sum.downtime_reduction_pct}% Reduction`;
+
+        document.getElementById('kpi-blocks-after').innerHTML = `${sum.blocks_count_after} <span class="unit">windows</span>`;
+        document.getElementById('kpi-blocks-before').innerText = `${sum.blocks_count_before} blocks`;
+        document.getElementById('kpi-blocks-reduction-badge').innerText = `▼ ${sum.blocks_reduction_pct}% Less Closures`;
+
+        document.getElementById('kpi-solver-status').innerText = telemetry.status;
+        document.getElementById('kpi-solve-time').innerText = `${telemetry.wall_time_ms} ms`;
+
+        setStatus('', `OPTIMAL FEASIBLE (${telemetry.wall_time_ms}ms)`);
+
+        logConsole(`CP-SAT Status: ${telemetry.status} in ${telemetry.wall_time_ms}ms (Branches: ${telemetry.num_branches}, Conflicts: ${telemetry.num_conflicts}).`, 'green');
+        logConsole(`Total track downtime reduced from ${sum.downtime_before_hours}h to ${sum.downtime_after_hours}h (${sum.downtime_reduction_pct}% net reduction).`, 'green');
+        logConsole(`Block closures consolidated from ${sum.blocks_count_before} separate closures to ${sum.blocks_count_after} joint windows.`, 'green');
+
+        renderCorridorTimelines();
+
+      } catch (err) {
+        console.error("Optimization error:", err);
+        setStatus('offline', 'SOLVE ERROR');
+        logConsole(`Optimization error: ${err.message}`, 'amber');
+      } finally {
+        runBtn.disabled = false;
+        runBtn.innerText = '⚡ Run Optimization';
+      }
+    }
+
+    // Render Defect Queue Table with explainable risk scores
+    function renderDefectQueue(defects) {
+      const tbody = document.getElementById('defect-table-body');
+      tbody.innerHTML = '';
+      document.getElementById('defect-count-badge').innerText = `${defects.length} Defects Detected across TMS, TDMS, SMMS`;
+
+      defects.forEach(d => {
+        const tr = document.createElement('tr');
+        const deptClass = d.department.toLowerCase();
+
+        // Severity dots
+        let dotsHtml = '<div class="severity-dots">';
+        for (let i = 1; i <= 5; i++) {
+          const isCritical = d.severity >= 4;
+          const activeClass = i <= d.severity ? (isCritical ? 'active critical' : 'active') : '';
+          dotsHtml += `<div class="severity-dot ${activeClass}"></div>`;
+        }
+        dotsHtml += `</div> <span style="font-family:var(--font-mono); font-size:11px; margin-left:4px;">${d.severity}/5</span>`;
+
+        // Priority badge style
+        const prioColor = d.priority_color || '#3b82f6';
+        const prioLevel = d.priority_level || 'MEDIUM';
+
+        tr.innerHTML = `
+          <td><strong style="font-family:var(--font-mono); color:#38bdf8;">${d.id}</strong></td>
+          <td><span class="dept-badge ${deptClass}">${d.department}</span></td>
+          <td><span style="font-family:var(--font-mono); font-size:12px;">${d.corridor}</span></td>
+          <td style="max-width:320px;">${d.description}</td>
+          <td>${dotsHtml}</td>
+          <td><span style="font-family:var(--font-mono); color:${d.days_overdue >= 7 ? '#ef4444' : '#f59e0b'}; font-weight:600;">+${d.days_overdue}d</span></td>
+          <td><span style="font-family:var(--font-mono);">${d.duration_hours} hrs</span></td>
+          <td>
+            <div class="risk-gauge-container" title="${d.breakdown ? d.breakdown.explanation : ''}">
+              <span class="risk-score-num" style="color:${prioColor};">${d.risk_score}</span>
+              <div class="risk-bar-track">
+                <div class="risk-bar-fill" style="width:${d.risk_score}%; background:${prioColor};"></div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="priority-badge" style="background:${prioColor}20; border:1px solid ${prioColor}60; color:${prioColor};">
+              ${prioLevel}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Render Corridor 168-hour Timelines
+    function renderCorridorTimelines() {
+      const container = document.getElementById('corridor-rows-container');
+      container.innerHTML = '';
+
+      if (!corridorsData.length) return;
+
+      corridorsData.forEach(corridor => {
+        const cid = corridor.id;
+        const row = document.createElement('div');
+        row.className = 'corridor-row';
+
+        // Meta Column
+        const meta = document.createElement('div');
+        meta.className = 'corridor-meta';
+        meta.innerHTML = `
+          <div class="corridor-id">${corridor.id}</div>
+          <div class="corridor-name" title="${corridor.name}">${corridor.name}</div>
+          <div class="corridor-zone">${corridor.zone} • ${corridor.max_speed_kmh} km/h</div>
+        `;
+        row.appendChild(meta);
+
+        // Track Canvas (0 to 168 hours)
+        const track = document.createElement('div');
+        track.className = 'corridor-track-container';
+
+        // 7 Day Guide Grid
+        const dayGuides = document.createElement('div');
+        dayGuides.className = 'day-guide-lines';
+        for (let i = 0; i < 7; i++) {
+          const dl = document.createElement('div');
+          dl.className = 'day-guide-line';
+          dayGuides.appendChild(dl);
+        }
+        track.appendChild(dayGuides);
+
+        // 1. Render COA Train-Occupied Hours (Red Hatched Bands)
+        const occupiedList = trainOccupiedHours[cid] || [];
+        // Group consecutive occupied hours into bands for cleaner DOM
+        const bands = groupConsecutiveHours(occupiedList);
+        bands.forEach(band => {
+          const bandEl = document.createElement('div');
+          bandEl.className = 'occupied-band';
+          const leftPct = (band.start / horizonHours) * 100;
+          const widthPct = (band.duration / horizonHours) * 100;
+          bandEl.style.left = `${leftPct}%`;
+          bandEl.style.width = `${widthPct}%`;
+
+          // Tooltip on hover
+          const startDay = Math.floor(band.start / 24) + 1;
+          const startH = band.start % 24;
+          const endH = (band.start + band.duration) % 24;
+          attachTooltip(bandEl, `COA TRAIN PATH OCCUPIED`, `
+            <strong>Corridor:</strong> ${cid} (${corridor.name})<br/>
+            <strong>Hours:</strong> Day ${startDay}, ${padZero(startH)}:00 to ${padZero(endH)}:00 (Total: ${band.duration}h)<br/>
+            <span style="color:#fca5a5;">High-speed passenger/freight passage active. Track maintenance strictly prohibited.</span>
+          `);
+
+          track.appendChild(bandEl);
+        });
+
+        // 2. Render Scheduled Blocks
+        if (scheduleResult) {
+          if (currentMode === 'after') {
+            // Joint Optimization Mode: Render single merged green joint window
+            const jointBlocks = scheduleResult.joint_schedule.blocks.filter(b => b.corridor_id === cid);
+            jointBlocks.forEach(jb => {
+              const bar = document.createElement('div');
+              bar.className = 'schedule-bar joint';
+              const leftPct = (jb.start_hour / horizonHours) * 100;
+              const widthPct = (jb.duration_hours / horizonHours) * 100;
+              bar.style.left = `${leftPct}%`;
+              bar.style.width = `${Math.max(widthPct, 2.5)}%`; // Min width for label visibility
+
+              const deptsStr = jb.departments_merged.join('+');
+              bar.innerHTML = `<span>JOINT: ${deptsStr} (${jb.duration_hours}h)</span>`;
+
+              const day = jb.start_day;
+              const hourInDay = jb.start_hour_in_day;
+              const endHourInDay = hourInDay + jb.duration_hours;
+
+              attachTooltip(bar, `JOINT OPTIMIZED BLOCK: ${cid}`, `
+                <strong>Window:</strong> Day ${day}, ${padZero(hourInDay)}:00 - ${padZero(endHourInDay)}:00 (Duration: ${jb.duration_hours}h)<br/>
+                <strong>Merged Departments:</strong> ${jb.departments_merged.join(', ')}<br/>
+                <strong>Corridor Urgency Score:</strong> ${jb.total_urgency}<br/>
+                <strong>Cleared Defects:</strong><br/>
+                ${jb.defects_included.map(d => `• [${d.department}] ${d.id}: ${d.description} (Risk: ${d.risk_score})`).join('<br/>')}<br/>
+                <span style="color:#34d399;">✓ 100% Zero conflict with COA train passages.</span>
+              `);
+
+              track.appendChild(bar);
+            });
+          } else {
+            // Before Mode: Render each defect independently at its earliest siloed slot
+            const siloedBlocks = scheduleResult.baseline_schedule.blocks.filter(b => b.corridor_id === cid);
+            
+            siloedBlocks.forEach((sb, idx) => {
+              const bar = document.createElement('div');
+              const deptClass = sb.department.toLowerCase();
+              bar.className = `schedule-bar ${deptClass}`;
+              
+              const leftPct = (sb.start_hour / horizonHours) * 100;
+              const widthPct = (sb.duration_hours / horizonHours) * 100;
+              bar.style.left = `${leftPct}%`;
+              bar.style.width = `${Math.max(widthPct, 2.2)}%`;
+              
+              // Apply slight vertical offset if multiple siloed blocks start close together
+              if (siloedBlocks.length > 1) {
+                const totalOffset = 36;
+                const slotHeight = totalOffset / siloedBlocks.length;
+                bar.style.top = `${4 + idx * slotHeight}px`;
+                bar.style.height = `${slotHeight - 2}px`;
+                bar.style.fontSize = '9px';
+              }
+
+              bar.innerHTML = `<span>${sb.department} ${sb.defect_id} (${sb.duration_hours}h)</span>`;
+
+              attachTooltip(bar, `SILOED REQUEST: ${sb.defect_id} (${sb.department})`, `
+                <strong>Corridor:</strong> ${cid}<br/>
+                <strong>Window:</strong> Day ${sb.start_day}, ${padZero(sb.start_hour_in_day)}:00 to ${padZero(sb.start_hour_in_day + sb.duration_hours)}:00<br/>
+                <strong>Duration:</strong> ${sb.duration_hours} hours downtime<br/>
+                <strong>Description:</strong> ${sb.description}<br/>
+                <span style="color:#fca5a5;">Uncoordinated independent block request.</span>
+              `);
+
+              track.appendChild(bar);
+            });
+          }
+        }
+
+        row.appendChild(track);
+        container.appendChild(row);
+      });
+    }
+
+    // Helper: Group consecutive occupied hours into [start, duration] bands
+    function groupConsecutiveHours(hours) {
+      if (!hours || !hours.length) return [];
+      const sorted = [...hours].sort((a, b) => a - b);
+      const bands = [];
+      let currentStart = sorted[0];
+      let currentDuration = 1;
+
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i] === sorted[i - 1] + 1) {
+          currentDuration++;
+        } else {
+          bands.push({ start: currentStart, duration: currentDuration });
+          currentStart = sorted[i];
+          currentDuration = 1;
+        }
+      }
+      bands.push({ start: currentStart, duration: currentDuration });
+      return bands;
+    }
+
+    function padZero(num) {
+      return num < 10 ? '0' + num : num;
+    }
+
+    // Custom Tooltip Handlers
+    const tooltipEl = document.getElementById('tooltip');
+    const tooltipTitle = document.getElementById('tooltip-title');
+    const tooltipContent = document.getElementById('tooltip-content');
+
+    function attachTooltip(element, title, htmlContent) {
+      element.addEventListener('mouseenter', (e) => {
+        tooltipTitle.innerText = title;
+        tooltipContent.innerHTML = htmlContent;
+        tooltipEl.style.display = 'block';
+        moveTooltip(e);
+      });
+
+      element.addEventListener('mousemove', (e) => {
+        moveTooltip(e);
+      });
+
+      element.addEventListener('mouseleave', () => {
+        tooltipEl.style.display = 'none';
+      });
+    }
+
+    function moveTooltip(e) {
+      const x = e.pageX + 15;
+      const y = e.pageY + 15;
+      tooltipEl.style.left = `${Math.min(x, window.innerWidth - 340)}px`;
+      tooltipEl.style.top = `${y}px`;
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchInitialData();
+    });
+  </script>
+</body>
+</html>
